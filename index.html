@@ -1,0 +1,1426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YaProxy</title>
+<style>
+html, body {
+  margin: 0;
+  height: 100%;
+  background: black;
+  font-family: "Courier New", monospace;
+  overflow: hidden;
+  color: #f2f2f2;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+button, input {
+  font-family: "Courier New", monospace;
+}
+
+#backgroundLayer {
+  position: fixed;
+  inset: 0;
+  background-color: black;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 1;
+  filter: blur(0px);
+  z-index: 0;
+}
+
+#screen {
+  color: #f2f2f2;
+  font-size: 27px;
+  padding: 24px;
+  white-space: pre-wrap;
+  line-height: 1.18;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  background: black;
+  z-index: 5;
+}
+
+.boot-line {
+  min-height: 1.1em;
+}
+
+#energyStarImg {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  width: 520px;
+  max-width: 32vw;
+}
+
+.blink {
+  animation: blink 1s steps(1) infinite;
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+#scanlines {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255,255,255,.02) 0px,
+    rgba(255,255,255,.02) 1px,
+    rgba(0,0,0,.12) 2px,
+    rgba(0,0,0,.12) 4px
+  );
+  opacity: .18;
+  z-index: 300;
+}
+
+#videoWrap {
+  position: fixed;
+  inset: 0;
+  background: black;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+}
+
+#bootVideo {
+  width: 100vw;
+  height: 100vh;
+  object-fit: cover;
+  background: black;
+}
+
+#settingsBtn {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  z-index: 80;
+  display: none;
+  background: rgba(0,0,0,0.88);
+  color: #f2f2f2;
+  border: 2px solid rgba(255,255,255,0.28);
+  width: 54px;
+  height: 54px;
+  font-size: 28px;
+  cursor: pointer;
+}
+
+#settingsBtn:hover {
+  border-color: rgba(255,255,255,0.7);
+  background: rgba(255,255,255,0.05);
+}
+
+#choiceScreen,
+#gamesScreen,
+#settingsPanel {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.38);
+  color: #f2f2f2;
+  display: none;
+  z-index: 25;
+  font-family: "Courier New", monospace;
+}
+
+.choice-title,
+.games-title,
+.settings-title {
+  position: absolute;
+  top: 36px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 30px;
+  letter-spacing: 1px;
+  text-align: center;
+}
+
+.choice-subtitle,
+.games-subtitle,
+.settings-subtitle {
+  position: absolute;
+  top: 78px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 18px;
+  opacity: 0.8;
+  text-align: center;
+}
+
+.choice-wrap {
+  position: absolute;
+  inset: 130px 40px 40px 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 40px;
+}
+
+.choice-card {
+  width: 39%;
+  max-width: 620px;
+  min-height: 360px;
+  border: 2px solid rgba(255,255,255,0.25);
+  padding: 22px;
+  box-sizing: border-box;
+  position: relative;
+  transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease, background 0.22s ease;
+  cursor: pointer;
+  background: rgba(255,255,255,0.02);
+  overflow: hidden;
+}
+
+.choice-card:hover {
+  transform: scale(1.05);
+  border-color: rgba(255,255,255,0.6);
+  box-shadow: 0 0 30px rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.04);
+}
+
+.choice-label {
+  font-size: 34px;
+  margin-bottom: 16px;
+}
+
+.choice-image {
+  width: 58%;
+  max-width: 280px;
+  height: auto;
+  position: absolute;
+  top: 78px;
+  opacity: 0.23;
+  transition: transform 0.22s ease, opacity 0.22s ease, filter 0.22s ease;
+  pointer-events: none;
+}
+
+.choice-card:hover .choice-image {
+  transform: scale(1.12);
+  opacity: 0.62;
+  filter: brightness(1.1);
+}
+
+.proxy-image {
+  left: 52%;
+  transform: translateX(-50%);
+  filter: brightness(0.8);
+}
+
+.vm-image {
+  left: 52%;
+  transform: translateX(-50%);
+}
+
+.choice-card:hover .proxy-image,
+.choice-card:hover .vm-image {
+  transform: translateX(-50%) scale(1.12);
+}
+
+.choice-desc {
+  position: absolute;
+  left: 22px;
+  right: 22px;
+  bottom: 60px;
+  font-size: 18px;
+  line-height: 1.45;
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+.choice-card:hover .choice-desc {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.choice-status {
+  position: absolute;
+  bottom: 18px;
+  right: 22px;
+  font-size: 18px;
+  opacity: 0.95;
+}
+
+.choice-hint {
+  position: absolute;
+  bottom: 18px;
+  left: 22px;
+  font-size: 16px;
+  opacity: 0.65;
+}
+
+.bios-border {
+  position: absolute;
+  inset: 12px;
+  border: 1px solid rgba(255,255,255,0.1);
+  pointer-events: none;
+}
+
+#gamesScreen .games-wrap {
+  position: absolute;
+  top: 140px;
+  left: 40px;
+  right: 40px;
+  bottom: 40px;
+}
+
+.game-buttons-row {
+  display: flex;
+  gap: 22px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.game-launch-btn {
+  width: 140px;
+  height: 214px;
+  background: rgba(255,255,255,0.03);
+  color: #f2f2f2;
+  border: 2px solid rgba(255,255,255,0.22);
+  font-family: "Courier New", monospace;
+  font-size: 24px;
+  cursor: pointer;
+  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+}
+
+.game-launch-btn:hover {
+  transform: scale(1.04);
+  border-color: rgba(255,255,255,0.62);
+  background: rgba(255,255,255,0.06);
+  box-shadow: 0 0 18px rgba(255,255,255,0.08);
+}
+
+.games-back-btn,
+.settings-back-btn {
+  margin-top: 28px;
+  background: black;
+  color: #f2f2f2;
+  border: 2px solid rgba(255,255,255,0.35);
+  padding: 12px 18px;
+  font-size: 20px;
+  cursor: pointer;
+  font-family: "Courier New", monospace;
+}
+
+.games-back-btn:hover,
+.settings-back-btn:hover {
+  border-color: rgba(255,255,255,0.7);
+  background: rgba(255,255,255,0.05);
+}
+
+#proxyPopupOverlay {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 90;
+  background: rgba(0,0,0,0.35);
+  backdrop-filter: blur(6px);
+}
+
+#proxyPopup {
+  width: min(620px, 92vw);
+  background: rgba(10,10,10,0.96);
+  color: #f2f2f2;
+  border: 2px solid rgba(255,255,255,0.22);
+  padding: 24px;
+  box-sizing: border-box;
+  font-family: "Courier New", monospace;
+  box-shadow: 0 0 30px rgba(0,0,0,0.45);
+}
+
+#proxyPopupTitle {
+  font-size: 30px;
+  margin-bottom: 14px;
+}
+
+#proxyPopupDesc {
+  font-size: 18px;
+  line-height: 1.5;
+  opacity: 0.88;
+  margin-bottom: 20px;
+}
+
+.proxy-popup-btns {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.popup-btn {
+  background: black;
+  color: #f2f2f2;
+  border: 2px solid rgba(255,255,255,0.35);
+  padding: 12px 18px;
+  font-size: 20px;
+  cursor: pointer;
+  font-family: "Courier New", monospace;
+}
+
+.popup-btn:hover {
+  border-color: rgba(255,255,255,0.7);
+  background: rgba(255,255,255,0.05);
+}
+
+.popup-btn.continue-btn {
+  border-color: rgba(255,90,90,0.7);
+  color: #ff8f8f;
+}
+
+#banOverlay {
+  position: fixed;
+  inset: 0;
+  background: black;
+  color: #f2f2f2;
+  display: none;
+  z-index: 200;
+  font-family: "Courier New", monospace;
+}
+
+#banWrap {
+  position: absolute;
+  inset: 40px;
+  border: 2px solid rgba(255,255,255,0.2);
+  padding: 28px;
+  box-sizing: border-box;
+}
+
+#banTitle {
+  font-size: 34px;
+  margin-bottom: 18px;
+}
+
+#banText {
+  font-size: 21px;
+  line-height: 1.5;
+  max-width: 900px;
+  margin-bottom: 22px;
+}
+
+#banDesc {
+  font-size: 17px;
+  opacity: 0.78;
+  margin-bottom: 24px;
+}
+
+#unbanInput,
+#devPassInput {
+  width: min(420px, 90vw);
+  background: black;
+  color: #f2f2f2;
+  border: 2px solid rgba(255,255,255,0.35);
+  padding: 12px 16px;
+  font-size: 20px;
+  outline: none;
+  box-sizing: border-box;
+  font-family: "Courier New", monospace;
+}
+
+#unbanInput:focus,
+#devPassInput:focus {
+  border-color: rgba(255,255,255,0.7);
+}
+
+#unbanBtn,
+#devUnlockBtn,
+#showAllBtn {
+  margin-top: 16px;
+  background: black;
+  color: #f2f2f2;
+  border: 2px solid rgba(255,255,255,0.35);
+  padding: 12px 18px;
+  font-size: 20px;
+  cursor: pointer;
+  font-family: "Courier New", monospace;
+}
+
+#unbanBtn:hover,
+#devUnlockBtn:hover,
+#showAllBtn:hover {
+  border-color: rgba(255,255,255,0.7);
+  background: rgba(255,255,255,0.05);
+}
+
+#unbanStatus {
+  margin-top: 16px;
+  min-height: 1.4em;
+  font-size: 18px;
+  opacity: 0.88;
+}
+
+#settingsPanel {
+  z-index: 70;
+  backdrop-filter: blur(8px);
+}
+
+.settings-wrap {
+  position: absolute;
+  top: 130px;
+  left: 40px;
+  right: 40px;
+  bottom: 40px;
+  overflow: auto;
+  padding-right: 8px;
+}
+
+.settings-section {
+  margin-bottom: 38px;
+}
+
+.section-heading {
+  font-size: 26px;
+  margin-bottom: 14px;
+}
+
+.section-desc {
+  font-size: 18px;
+  opacity: 0.82;
+  margin-bottom: 18px;
+  line-height: 1.45;
+}
+
+#featuredWrap {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.bg-tile {
+  width: 160px;
+  height: 160px;
+  background-size: cover;
+  background-position: center;
+  border: 2px solid rgba(255,255,255,0.28);
+  cursor: pointer;
+  position: relative;
+  transition: transform 0.18s ease, border-color 0.18s ease;
+}
+
+.bg-tile:hover,
+.gallery-img:hover {
+  border-color: rgba(255,255,255,0.72);
+  transform: scale(1.03);
+}
+
+.slider-block {
+  margin-top: 24px;
+}
+
+.slider-title {
+  font-size: 18px;
+  margin-bottom: 8px;
+}
+
+.slider-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 620px;
+}
+
+.slider-edge {
+  width: 44px;
+  font-size: 16px;
+  opacity: 0.7;
+}
+
+.slider-current {
+  width: 64px;
+  font-size: 18px;
+  text-align: left;
+}
+
+input[type=range] {
+  flex: 1;
+}
+
+#galleryPopup {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.95);
+  display: none;
+  z-index: 100;
+  color: #f2f2f2;
+  font-family: "Courier New", monospace;
+  padding: 30px;
+  box-sizing: border-box;
+}
+
+.gallery-top {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.gallery-title {
+  font-size: 28px;
+}
+
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 120px));
+  gap: 16px;
+}
+
+.gallery-img {
+  width: 120px;
+  height: 120px;
+  background-size: cover;
+  background-position: center;
+  border: 2px solid rgba(255,255,255,0.35);
+  cursor: pointer;
+  transition: transform 0.18s ease, border-color 0.18s ease;
+}
+
+#devUnlockedBox {
+  display: none;
+  margin-top: 16px;
+  padding: 16px;
+  border: 2px solid rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.03);
+  font-size: 18px;
+  opacity: 0.88;
+}
+
+@media (max-width: 1000px) {
+  .choice-wrap {
+    flex-direction: column;
+    justify-content: center;
+    inset: 120px 24px 24px 24px;
+  }
+
+  .choice-card {
+    width: min(92vw, 700px);
+    min-height: 280px;
+  }
+
+  .choice-image {
+    width: 42%;
+    max-width: 220px;
+    top: 70px;
+  }
+
+  .choice-label {
+    font-size: 28px;
+  }
+
+  .choice-desc {
+    font-size: 16px;
+  }
+
+  .games-wrap,
+  .settings-wrap {
+    left: 24px;
+    right: 24px;
+  }
+}
+</style>
+</head>
+<body>
+
+<div id="backgroundLayer"></div>
+
+<div id="screen">
+  <img id="energyStarImg" src="es.png" alt="Energy Star">
+</div>
+
+<div id="scanlines"></div>
+
+<div id="videoWrap">
+  <video id="bootVideo" playsinline>
+    <source src="load.mp4" type="video/mp4">
+  </video>
+</div>
+
+<button id="settingsBtn">⚙</button>
+
+<div id="choiceScreen">
+  <div class="bios-border"></div>
+  <div class="choice-title">Select Environment</div>
+  <div class="choice-subtitle">Use mouse to inspect options</div>
+
+  <div class="choice-wrap">
+    <div class="choice-card" id="proxyCard">
+      <div class="choice-label">Proxy</div>
+      <img class="choice-image proxy-image" src="proxyb.jpeg" alt="Proxy">
+      <div class="choice-desc">
+        Launch local HTML games from the YaProxy HTMLS folder.
+      </div>
+      <div class="choice-hint">Hover to inspect</div>
+      <div class="choice-status" style="color:#ffd54a;">In Open-InProgress</div>
+    </div>
+
+    <div class="choice-card" id="vmCard">
+      <div class="choice-label">VM</div>
+      <img class="choice-image vm-image" src="VMb.jpg" alt="VM">
+      <div class="choice-desc">
+        A VM (virtual machine) is a machine or computer that runs with your computer parts. It allows you to use another computer on the host machine.
+      </div>
+      <div class="choice-hint">Hover to inspect</div>
+      <div class="choice-status" style="color:#ffb3b3;">Not Finished</div>
+    </div>
+  </div>
+</div>
+
+<div id="gamesScreen">
+  <div class="bios-border"></div>
+  <div class="games-title">Games</div>
+  <div class="games-subtitle">Local HTML launcher</div>
+
+  <div class="games-wrap">
+    <div class="game-buttons-row">
+      <button class="game-launch-btn" id="openMinecraftBtn">Minecraft</button>
+      <button class="game-launch-btn" id="openSecondGameBtn">Game 2</button>
+    </div>
+
+    <button class="games-back-btn" id="gamesBackBtn">Back</button>
+  </div>
+</div>
+
+<div id="settingsPanel">
+  <div class="bios-border"></div>
+  <div class="settings-title">Settings</div>
+  <div class="settings-subtitle">Customize YaProxy</div>
+
+  <div class="settings-wrap">
+    <button class="settings-back-btn" id="settingsBackBtn">Back</button>
+
+    <div class="settings-section">
+      <div class="section-heading">Backgrounds</div>
+      <div class="section-desc">
+        Featured backgrounds are chosen randomly each time this page loads.
+      </div>
+
+      <div id="featuredWrap"></div>
+      <button id="showAllBtn">Show All</button>
+
+      <div class="slider-block">
+        <div class="slider-title">Opacity</div>
+        <div class="slider-row">
+          <div class="slider-current" id="opacityCurrent">100%</div>
+          <div class="slider-edge">0%</div>
+          <input id="opacitySlider" type="range" min="0" max="100" value="100">
+          <div class="slider-edge">100%</div>
+        </div>
+      </div>
+
+      <div class="slider-block">
+        <div class="slider-title">Blur</div>
+        <div class="slider-row">
+          <div class="slider-current" id="blurCurrent">0%</div>
+          <div class="slider-edge">0%</div>
+          <input id="blurSlider" type="range" min="0" max="100" value="0">
+          <div class="slider-edge">100%</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="section-heading">Color Backgrounds</div>
+      <div class="section-desc">
+        Solid color backgrounds for a simple look.
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="section-heading">Developer Settings</div>
+      <div class="section-desc">
+        Enter the developer password to unlock future tools.
+      </div>
+      <input id="devPassInput" type="password" placeholder="Enter developer password">
+      <br>
+      <button id="devUnlockBtn">Unlock</button>
+
+      <div id="devUnlockedBox">
+        Developer settings are unlocked. More options can be added here later.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="galleryPopup">
+  <div class="gallery-top">
+    <button class="settings-back-btn" id="galleryBackBtn">Back</button>
+    <div class="gallery-title">Background Gallery</div>
+  </div>
+
+  <div class="gallery-grid" id="galleryGrid"></div>
+</div>
+
+<div id="proxyPopupOverlay">
+  <div id="proxyPopup">
+    <div id="proxyPopupTitle">Download HTMLs</div>
+    <div id="proxyPopupDesc">
+      You must agree to use local HTML files to access this game section.
+    </div>
+
+    <div class="proxy-popup-btns">
+      <button class="popup-btn continue-btn" id="proxyPopupContinueBtn">Continue</button>
+      <button class="popup-btn" id="proxyPopupCancelBtn">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div id="banOverlay">
+  <div id="banWrap">
+    <div id="banTitle">Your Device Has Been Banned From Using YaProxy.</div>
+    <div id="banText">Error Code 1. Used Leaked Password.</div>
+    <div id="banDesc">Use a password from the developer to get unbanned.</div>
+    <input id="unbanInput" type="password" placeholder="Enter unban password">
+    <br>
+    <button id="unbanBtn">UnBan</button>
+    <div id="unbanStatus"></div>
+  </div>
+</div>
+
+<audio id="bootAudio" loop>
+  <source src="old.mp3" type="audio/mpeg">
+</audio>
+
+<audio id="hoverAudio" preload="auto">
+  <source src="hover.mp3" type="audio/mpeg">
+</audio>
+
+<audio id="banAudio">
+  <source src="ban.mp3" type="audio/mpeg">
+</audio>
+
+<script>
+const CORRECT_PASSWORD = "YARCA";
+const LEAKED_PASSWORD = "Y12";
+const UNBAN_PASSWORD = "YAUN";
+const DEV_PASSWORD = "PDEV";
+const BAN_STORAGE_KEY = "yaproxy_banned_v1";
+
+const TOTAL_BACKGROUNDS = 13;
+
+const screen = document.getElementById("screen");
+const bootAudio = document.getElementById("bootAudio");
+const hoverAudio = document.getElementById("hoverAudio");
+const banAudio = document.getElementById("banAudio");
+const videoWrap = document.getElementById("videoWrap");
+const bootVideo = document.getElementById("bootVideo");
+const choiceScreen = document.getElementById("choiceScreen");
+const gamesScreen = document.getElementById("gamesScreen");
+const settingsPanel = document.getElementById("settingsPanel");
+const settingsBtn = document.getElementById("settingsBtn");
+const settingsBackBtn = document.getElementById("settingsBackBtn");
+const scanlines = document.getElementById("scanlines");
+const backgroundLayer = document.getElementById("backgroundLayer");
+
+const proxyCard = document.getElementById("proxyCard");
+const vmCard = document.getElementById("vmCard");
+
+const openMinecraftBtn = document.getElementById("openMinecraftBtn");
+const openSecondGameBtn = document.getElementById("openSecondGameBtn");
+const gamesBackBtn = document.getElementById("gamesBackBtn");
+
+const proxyPopupOverlay = document.getElementById("proxyPopupOverlay");
+const proxyPopupContinueBtn = document.getElementById("proxyPopupContinueBtn");
+const proxyPopupCancelBtn = document.getElementById("proxyPopupCancelBtn");
+
+const banOverlay = document.getElementById("banOverlay");
+const unbanInput = document.getElementById("unbanInput");
+const unbanBtn = document.getElementById("unbanBtn");
+const unbanStatus = document.getElementById("unbanStatus");
+
+const featuredWrap = document.getElementById("featuredWrap");
+const showAllBtn = document.getElementById("showAllBtn");
+const galleryPopup = document.getElementById("galleryPopup");
+const galleryGrid = document.getElementById("galleryGrid");
+const galleryBackBtn = document.getElementById("galleryBackBtn");
+
+const opacitySlider = document.getElementById("opacitySlider");
+const blurSlider = document.getElementById("blurSlider");
+const opacityCurrent = document.getElementById("opacityCurrent");
+const blurCurrent = document.getElementById("blurCurrent");
+
+const devPassInput = document.getElementById("devPassInput");
+const devUnlockBtn = document.getElementById("devUnlockBtn");
+const devUnlockedBox = document.getElementById("devUnlockedBox");
+
+let passwordBuffer = "";
+let passwordLine = null;
+let cursor = null;
+let passwordActive = false;
+let bootStarted = false;
+let transitionStarted = false;
+let currentMainScreen = "choice";
+
+function getBackgroundPath(num) {
+  return `Backgrounds/background (${num}).png`;
+}
+
+function wait(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function addLine(text = "") {
+  const div = document.createElement("div");
+  div.className = "boot-line";
+  div.textContent = text;
+  screen.appendChild(div);
+  return div;
+}
+
+async function typeText(el, text, speed = 10) {
+  el.textContent = "";
+  for (let i = 0; i < text.length; i++) {
+    el.textContent += text[i];
+    await wait(speed);
+  }
+}
+
+function formatMBtoK(mb) {
+  return Math.round(mb * 1024);
+}
+
+function bytesToMB(bytes) {
+  return Math.round(bytes / (1024 * 1024));
+}
+
+async function getMemory() {
+  if (navigator.deviceMemory) return navigator.deviceMemory * 1024;
+  return 4096;
+}
+
+async function getStorage() {
+  try {
+    const est = await navigator.storage.estimate();
+    if (est.quota) return bytesToMB(est.quota);
+  } catch (e) {}
+  return 20480;
+}
+
+async function animateCount(line, prefix, suffix, target, duration) {
+  const frames = 60;
+  const delay = duration / frames;
+
+  for (let i = 1; i <= frames; i++) {
+    const value = Math.round(target * (i / frames));
+    line.textContent = prefix + value + suffix;
+    await wait(delay);
+  }
+}
+
+async function animateMemory(line, mb) {
+  const k = formatMBtoK(mb);
+  const calc = (k / 1000) * 400;
+  const duration = Math.min(3200, calc);
+  await animateCount(line, "Memory Test :  ", "K", k, duration);
+  line.textContent = "Memory Test :  " + k + "K OK";
+}
+
+async function animateDisk(line, mb) {
+  const k = mb * 1024;
+  const calc = (k / 1000) * 400;
+  const duration = Math.min(3200, calc);
+  await animateCount(line, "Fixed Disk 0 :  ", "MB", mb, duration);
+  line.textContent = "Fixed Disk 0 :  " + mb + "MB OK";
+}
+
+function startPasswordPrompt() {
+  passwordBuffer = "";
+  passwordActive = true;
+
+  passwordLine = addLine("Enter Password To Enter SETUP: ");
+  cursor = document.createElement("span");
+  cursor.className = "blink";
+  cursor.textContent = "_";
+  passwordLine.appendChild(cursor);
+
+  document.addEventListener("keydown", handlePassword);
+}
+
+function updatePasswordDisplay() {
+  if (!passwordLine || !cursor) return;
+  passwordLine.textContent = "Enter Password To Enter SETUP: " + passwordBuffer;
+  passwordLine.appendChild(cursor);
+}
+
+function stopBootAudio() {
+  try {
+    bootAudio.pause();
+    bootAudio.currentTime = 0;
+  } catch (e) {}
+}
+
+function playHoverSound() {
+  try {
+    hoverAudio.pause();
+    hoverAudio.currentTime = 0;
+    hoverAudio.play();
+  } catch (e) {}
+}
+
+function isBanned() {
+  try {
+    return localStorage.getItem(BAN_STORAGE_KEY) === "1";
+  } catch (e) {
+    return false;
+  }
+}
+
+function setBanned(value) {
+  try {
+    if (value) localStorage.setItem(BAN_STORAGE_KEY, "1");
+    else localStorage.removeItem(BAN_STORAGE_KEY);
+  } catch (e) {}
+}
+
+function showBanOverlay() {
+  stopBootAudio();
+  passwordActive = false;
+  document.removeEventListener("keydown", handlePassword);
+
+  screen.style.display = "none";
+  videoWrap.style.display = "none";
+  choiceScreen.style.display = "none";
+  gamesScreen.style.display = "none";
+  settingsPanel.style.display = "none";
+  proxyPopupOverlay.style.display = "none";
+  galleryPopup.style.display = "none";
+  settingsBtn.style.display = "none";
+  scanlines.style.display = "none";
+  banOverlay.style.display = "block";
+  unbanStatus.textContent = "";
+  unbanInput.value = "";
+
+  try {
+    banAudio.currentTime = 0;
+    banAudio.play();
+  } catch (e) {}
+}
+
+function banDevice() {
+  setBanned(true);
+  showBanOverlay();
+}
+
+async function handleCorrectPassword() {
+  if (transitionStarted) return;
+  transitionStarted = true;
+
+  passwordActive = false;
+  document.removeEventListener("keydown", handlePassword);
+
+  if (cursor) {
+    cursor.remove();
+    cursor = null;
+  }
+
+  addLine("Password Accepted");
+  addLine("Starting Windows Vista 2001 Server");
+
+  await wait(1500);
+
+  stopBootAudio();
+
+  scanlines.style.display = "none";
+  screen.style.display = "none";
+  videoWrap.style.display = "flex";
+
+  try {
+    bootVideo.currentTime = 0;
+    await bootVideo.play();
+  } catch (e) {
+    console.log("Video play blocked:", e);
+  }
+}
+
+function handlePassword(e) {
+  if (!passwordActive) return;
+
+  if (e.key === "Enter") {
+    const entered = passwordBuffer.toUpperCase();
+
+    if (entered === CORRECT_PASSWORD) {
+      handleCorrectPassword();
+    } else if (entered === LEAKED_PASSWORD) {
+      banDevice();
+    } else {
+      addLine("Incorrect Password");
+      passwordBuffer = "";
+      updatePasswordDisplay();
+    }
+    return;
+  }
+
+  if (e.key === "Backspace") {
+    passwordBuffer = passwordBuffer.slice(0, -1);
+    updatePasswordDisplay();
+    return;
+  }
+
+  if (e.key.length === 1) {
+    passwordBuffer += e.key;
+    updatePasswordDisplay();
+  }
+}
+
+function showChoiceScreen() {
+  videoWrap.style.display = "none";
+  choiceScreen.style.display = "block";
+  gamesScreen.style.display = "none";
+  settingsBtn.style.display = "block";
+  currentMainScreen = "choice";
+}
+
+function showProxyPopup() {
+  choiceScreen.style.filter = "blur(6px)";
+  proxyPopupOverlay.style.display = "flex";
+}
+
+function hideProxyPopup() {
+  choiceScreen.style.filter = "none";
+  proxyPopupOverlay.style.display = "none";
+}
+
+function openGamesScreen() {
+  hideProxyPopup();
+  choiceScreen.style.display = "none";
+  gamesScreen.style.display = "block";
+  settingsBtn.style.display = "block";
+  currentMainScreen = "games";
+}
+
+function backToChoiceFromGames() {
+  gamesScreen.style.display = "none";
+  choiceScreen.style.display = "block";
+  settingsBtn.style.display = "block";
+  currentMainScreen = "choice";
+}
+
+function openLocalHtmlPage(filename) {
+  window.location.href = filename;
+}
+
+function preventVmClick(card) {
+  card.addEventListener("click", function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const status = card.querySelector(".choice-status");
+    if (status) status.textContent = "Not Finished";
+  });
+}
+
+function tryUnban() {
+  const entered = unbanInput.value.trim().toUpperCase();
+
+  if (entered === UNBAN_PASSWORD) {
+    setBanned(false);
+    unbanStatus.textContent = "Device unbanned. Reloading...";
+    setTimeout(() => {
+      location.reload();
+    }, 700);
+  } else {
+    unbanStatus.textContent = "Wrong unban password.";
+  }
+}
+
+function setBackground(path) {
+  backgroundLayer.style.backgroundImage = `url("${path}")`;
+  backgroundLayer.style.backgroundColor = "black";
+  try {
+    localStorage.setItem("yaproxy_background", path);
+    localStorage.removeItem("yaproxy_background_color");
+  } catch (e) {}
+}
+
+function setSolidBackground(color) {
+  backgroundLayer.style.backgroundImage = "none";
+  backgroundLayer.style.backgroundColor = color;
+  try {
+    localStorage.setItem("yaproxy_background_color", color);
+    localStorage.removeItem("yaproxy_background");
+  } catch (e) {}
+}
+
+function loadSavedBackground() {
+  try {
+    const savedImage = localStorage.getItem("yaproxy_background");
+    const savedColor = localStorage.getItem("yaproxy_background_color");
+
+    if (savedImage) {
+      backgroundLayer.style.backgroundImage = `url("${savedImage}")`;
+      backgroundLayer.style.backgroundColor = "black";
+    } else if (savedColor) {
+      backgroundLayer.style.backgroundImage = "none";
+      backgroundLayer.style.backgroundColor = savedColor;
+    }
+  } catch (e) {}
+}
+
+function getRandomFeatured(count = 3) {
+  const nums = [];
+  while (nums.length < count) {
+    const n = Math.floor(Math.random() * TOTAL_BACKGROUNDS) + 1;
+    if (!nums.includes(n)) nums.push(n);
+  }
+  return nums;
+}
+
+function renderFeaturedBackgrounds() {
+  featuredWrap.innerHTML = "";
+  const featured = getRandomFeatured(3);
+
+  featured.forEach(num => {
+    const tile = document.createElement("div");
+    tile.className = "bg-tile";
+    tile.style.backgroundImage = `url("${getBackgroundPath(num)}")`;
+    tile.addEventListener("click", () => setBackground(getBackgroundPath(num)));
+    featuredWrap.appendChild(tile);
+  });
+}
+
+function renderAllBackgrounds() {
+  galleryGrid.innerHTML = "";
+
+  for (let i = 1; i <= TOTAL_BACKGROUNDS; i++) {
+    const tile = document.createElement("div");
+    tile.className = "gallery-img";
+    tile.style.backgroundImage = `url("${getBackgroundPath(i)}")`;
+    tile.addEventListener("click", () => setBackground(getBackgroundPath(i)));
+    galleryGrid.appendChild(tile);
+  }
+
+  const colorOptions = [
+    { name: "Blue", value: "blue" },
+    { name: "Red", value: "red" },
+    { name: "Black", value: "black" },
+    { name: "White", value: "white" },
+    { name: "Gray", value: "gray" },
+    { name: "Orange", value: "orange" },
+    { name: "Yellow", value: "yellow" },
+    { name: "Purple", value: "purple" },
+    { name: "Pink", value: "pink" }
+  ];
+
+  colorOptions.forEach(color => {
+    const tile = document.createElement("div");
+    tile.className = "gallery-img";
+    tile.style.backgroundImage = "none";
+    tile.style.backgroundColor = color.value;
+    tile.title = color.name;
+    tile.addEventListener("click", () => setSolidBackground(color.value));
+    galleryGrid.appendChild(tile);
+  });
+}
+
+function loadSavedBackgroundEffects() {
+  try {
+    const savedOpacity = localStorage.getItem("yaproxy_bg_opacity");
+    const savedBlur = localStorage.getItem("yaproxy_bg_blur");
+
+    const opacityValue = savedOpacity !== null ? Number(savedOpacity) : 100;
+    const blurValue = savedBlur !== null ? Number(savedBlur) : 0;
+
+    opacitySlider.value = opacityValue;
+    blurSlider.value = blurValue;
+
+    applyOpacity(opacityValue);
+    applyBlur(blurValue);
+  } catch (e) {
+    applyOpacity(100);
+    applyBlur(0);
+  }
+}
+
+function applyOpacity(value) {
+  opacityCurrent.textContent = value + "%";
+  backgroundLayer.style.opacity = value / 100;
+  try {
+    localStorage.setItem("yaproxy_bg_opacity", value);
+  } catch (e) {}
+}
+
+function applyBlur(value) {
+  blurCurrent.textContent = value + "%";
+  backgroundLayer.style.filter = "blur(" + (value / 10) + "px)";
+  try {
+    localStorage.setItem("yaproxy_bg_blur", value);
+  } catch (e) {}
+}
+
+function openSettings() {
+  settingsPanel.style.display = "block";
+  settingsBtn.style.display = "none";
+  renderFeaturedBackgrounds();
+}
+
+function closeSettings() {
+  settingsPanel.style.display = "none";
+  galleryPopup.style.display = "none";
+  if (currentMainScreen === "choice") choiceScreen.style.display = "block";
+  if (currentMainScreen === "games") gamesScreen.style.display = "block";
+  settingsBtn.style.display = "block";
+}
+
+function openGallery() {
+  galleryPopup.style.display = "block";
+}
+
+function closeGallery() {
+  galleryPopup.style.display = "none";
+}
+
+function unlockDeveloper() {
+  const entered = devPassInput.value.trim().toUpperCase();
+  if (entered === DEV_PASSWORD) {
+    devUnlockedBox.style.display = "block";
+  }
+}
+
+bootVideo.addEventListener("ended", showChoiceScreen);
+
+proxyCard.addEventListener("mouseenter", playHoverSound);
+vmCard.addEventListener("mouseenter", playHoverSound);
+
+proxyCard.addEventListener("click", function(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  showProxyPopup();
+});
+
+preventVmClick(vmCard);
+
+proxyPopupContinueBtn.addEventListener("click", openGamesScreen);
+proxyPopupCancelBtn.addEventListener("click", hideProxyPopup);
+
+gamesBackBtn.addEventListener("click", backToChoiceFromGames);
+
+openMinecraftBtn.addEventListener("click", () => {
+  openLocalHtmlPage("HTMLS/minecraft.html");
+});
+
+openSecondGameBtn.addEventListener("click", () => {
+  openLocalHtmlPage("HTMLS/game2.html");
+});
+
+unbanBtn.addEventListener("click", tryUnban);
+unbanInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") tryUnban();
+});
+
+settingsBtn.addEventListener("click", openSettings);
+settingsBackBtn.addEventListener("click", closeSettings);
+showAllBtn.addEventListener("click", openGallery);
+galleryBackBtn.addEventListener("click", closeGallery);
+devUnlockBtn.addEventListener("click", unlockDeveloper);
+
+opacitySlider.addEventListener("input", () => {
+  applyOpacity(Number(opacitySlider.value));
+});
+
+blurSlider.addEventListener("input", () => {
+  applyBlur(Number(blurSlider.value));
+});
+
+async function bootSequence() {
+  screen.innerHTML = '<img id="energyStarImg" src="es.png" alt="Energy Star">';
+
+  const ram = await getMemory();
+  const storage = await getStorage();
+
+  const l1 = addLine();
+  await typeText(l1, "Award Modular BIOS v1.51PC, An Energy Star Ally");
+
+  const l2 = addLine();
+  await typeText(l2, "Copyright (C) 1984-96, Award Software Inc.");
+
+  addLine("");
+  await wait(200);
+
+  addLine("ASUS P2B ACPI BIOS Revision 1012");
+  addLine("");
+
+  addLine("Intel(R) Pentium(R) III CPU at 450MHz");
+
+  const memLine = addLine("Memory Test :  0K");
+  await animateMemory(memLine, ram);
+
+  const diskLine = addLine("Fixed Disk 0 :  0MB");
+  await animateDisk(diskLine, storage);
+
+  addLine("");
+  addLine("Detecting IDE Primary Master    ...  QUANTUM FIREBALLP LM20.4");
+  addLine("Detecting IDE Primary Slave     ...  None");
+  addLine("Detecting IDE Secondary Master  ...  ATAPI CD-ROM 48X");
+  addLine("Detecting IDE Secondary Slave   ...  None");
+
+  addLine("");
+  addLine("USB Legacy Support enabled");
+  addLine("CPU microcode update loaded");
+  addLine("Verifying DMI Pool Data ...............");
+
+  await wait(700);
+
+  addLine("");
+  addLine("Boot from ATAPI CD-ROM:");
+
+  await wait(600);
+
+  addLine("");
+  addLine("Starting MS-DOS...");
+
+  await wait(300);
+
+  addLine("");
+  startPasswordPrompt();
+}
+
+function startBoot() {
+  if (bootStarted) return;
+  bootStarted = true;
+
+  if (isBanned()) {
+    showBanOverlay();
+    return;
+  }
+
+  try {
+    bootAudio.currentTime = 0;
+    bootAudio.play().catch(() => {});
+  } catch (e) {}
+
+  bootSequence();
+}
+
+renderAllBackgrounds();
+renderFeaturedBackgrounds();
+loadSavedBackground();
+loadSavedBackgroundEffects();
+
+const hasImage = backgroundLayer.style.backgroundImage && backgroundLayer.style.backgroundImage !== "none";
+const hasSavedColor = localStorage.getItem("yaproxy_background_color");
+
+if (!hasImage && !hasSavedColor) {
+  setBackground(getBackgroundPath(1));
+}
+
+if (isBanned()) {
+  screen.style.display = "none";
+  scanlines.style.display = "none";
+  banOverlay.style.display = "block";
+} else {
+  screen.innerHTML = `
+<div class="boot-line">Click or press any key to power on</div>
+<div class="boot-line blink">_</div>
+`;
+  window.addEventListener("click", startBoot, { once: true });
+  window.addEventListener("keydown", startBoot, { once: true });
+}
+</script>
+
+</body>
+</html>
